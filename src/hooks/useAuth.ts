@@ -9,28 +9,22 @@ export function useAuth() {
   useEffect(() => {
     let cancelled = false;
 
-    // If Supabase never responds, unblock the loading screen after 10 seconds
+    // Safety net: if Supabase never fires INITIAL_SESSION (e.g. totally unreachable),
+    // unblock the UI after 15 seconds.
     const timeout = setTimeout(() => {
       if (!cancelled) setLoading(false);
-    }, 10000);
+    }, 15000);
 
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        if (!cancelled) {
-          clearTimeout(timeout);
-          setUser(session?.user ?? null);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          clearTimeout(timeout);
-          setLoading(false);
-        }
-      });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!cancelled) setUser(session?.user ?? null);
+    // onAuthStateChange is the single source of truth.
+    // INITIAL_SESSION fires once after client init (including any PKCE code exchange),
+    // so it correctly handles the post-OAuth redirect case.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      setUser(session?.user ?? null);
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        clearTimeout(timeout);
+        setLoading(false);
+      }
     });
 
     return () => {

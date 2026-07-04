@@ -27,11 +27,13 @@ export interface Subscription {
   name: string;
   cost: number;
   currency: 'EGP' | 'USD';
+  paidMonth?: string; // 'YYYY-MM' when last paid
 }
 
 export interface NetWorthSnapshot {
   date: string;
   value: number;
+  weekKey?: string; // 'YYYY-WNN' for auto weekly snapshots
 }
 
 export interface FinanceData {
@@ -46,6 +48,7 @@ export interface FinanceData {
   goldPricePerGram: number;
   usdToEGP: number;
   subscriptions: Subscription[];
+  reminderDismissedMonth?: string; // 'YYYY-MM'
 }
 
 export interface FreelancingTask {
@@ -54,14 +57,27 @@ export interface FreelancingTask {
   completed: boolean;
 }
 
+// Custom habit definition (stored in cloud)
+export interface HabitDef {
+  id: string;
+  label: string;
+  desc: string;
+  color: string;
+}
+
 export interface DailyData {
   date: string;
-  training: boolean;
-  breakfast: boolean;
-  lunch: boolean;
-  dinner: boolean;
-  hydrated: boolean;
-  studiedNew: boolean;
-  completedWorkTasks: boolean;
-  freelancingTasks: FreelancingTask[];
+  // New customizable format
+  habits?: HabitDef[];
+  habitsDone?: Record<string, boolean>;
+  workTasks?: FreelancingTask[];
+  // Old format fields (kept for migration)
+  training?: boolean;
+  breakfast?: boolean;
+  lunch?: boolean;
+  dinner?: boolean;
+  hydrated?: boolean;
+  studiedNew?: boolean;
+  completedWorkTasks?: boolean;
+  freelancingTasks?: FreelancingTask[];
 }

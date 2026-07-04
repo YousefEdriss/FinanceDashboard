@@ -7,7 +7,7 @@ import { useAuth } from './hooks/useAuth';
 import type { User } from '@supabase/supabase-js';
 
 /* ── Sign-in screen ── */
-function AuthGate({ onSignIn }: { onSignIn: () => void }) {
+function AuthGate({ onSignIn, error }: { onSignIn: () => void; error: string | null }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#000' }}>
 
@@ -45,9 +45,16 @@ function AuthGate({ onSignIn }: { onSignIn: () => void }) {
           </div>
         </div>
 
-        <p className="text-xs font-mono mb-8 mt-4" style={{ color: 'rgba(168,85,247,0.5)' }}>
+        <p className="text-xs font-mono mb-4 mt-4" style={{ color: 'rgba(168,85,247,0.5)' }}>
           Sign in to access your dashboard
         </p>
+
+        {error && (
+          <div className="mb-4 px-3 py-2 rounded-lg text-xs font-mono text-left"
+            style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.35)', color: '#f87171' }}>
+            {error}
+          </div>
+        )}
 
         {/* Google sign-in button */}
         <button onClick={onSignIn}
@@ -91,11 +98,11 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, authError, signInWithGoogle, signOut } = useAuth();
 
   if (loading) return <LoadingScreen />;
 
-  if (!user) return <AuthGate onSignIn={signInWithGoogle} />;
+  if (!user) return <AuthGate onSignIn={signInWithGoogle} error={authError} />;
 
   return (
     <BrowserRouter>

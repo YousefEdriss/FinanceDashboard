@@ -1,0 +1,65 @@
+name: Update Exchange Rates
+
+on:
+  schedule:
+    # 04:00 UTC = 06:00 Egypt Standard Time (UTC+2)
+    - cron: '0 4 * * *'
+  workflow_dispatch: # allow manual trigger from GitHub Actions UI
+
+jobs:
+  update-rates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch USD/EGP and gold rates, write to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -e
+
+          # ── USD → EGP (Yahoo Finance) ──────────────────────────────────────────
+          USD_EGP_RAW=$(curl -sf \
+            "https://query1.finance.yahoo.com/v8/finance/chart/USDEGP%3DX?interval=1d&range=1d" \
+            -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
+            -H "Accept: application/json")
+
+          USD_EGP=$(echo "$USD_EGP_RAW" | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          price = d['chart']['result'][0]['meta']['regularMarketPrice']
+          print(round(float(price), 4))
+          ")
+
+          # ── Gold price in USD per troy oz (Yahoo Finance gold futures) ─────────
+          GOLD_USD_RAW=$(curl -sf \
+            "https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=1d" \
+            -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
+            -H "Accept: application/json")
+
+          GOLD_USD=$(echo "$GOLD_USD_RAW" | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          price = d['chart']['result'][0]['meta']['regularMarketPrice']
+          print(float(price))
+          ")
+
+          # ── Gold per gram in EGP ───────────────────────────────────────────────
+          # 1 troy oz = 31.1035 grams
+          GOLD_EGP=$(python3 -c "print(round(($GOLD_USD / 31.1035) * $USD_EGP, 2))")
+
+          echo "USD → EGP : $USD_EGP"
+          echo "Gold/oz   : $GOLD_USD USD"
+          echo "Gold/g    : $GOLD_EGP EGP"
+
+          # ── Upsert into Supabase exchange_rates table ──────────────────────────
+          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+            -X POST "${SUPABASE_URL}/rest/v1/exchange_rates" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates" \
+            -d "{\"id\": 1, \"usd_to_egp\": ${USD_EGP}, \"gold_egp_per_gram\": ${GOLD_EGP}}")
+
+          echo "Supabase HTTP status: $HTTP_STATUS"
+          [[ "$HTTP_STATUS" =~ ^2 ]] && echo "✅ Rates updated successfully" || (echo "❌ Supabase update failed" && exit 1)

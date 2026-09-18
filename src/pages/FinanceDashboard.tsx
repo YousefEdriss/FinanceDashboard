@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 import { useCountUp } from '../hooks/useCountUp';
+import { useExchangeRates } from '../hooks/useExchangeRates';
 import type { FinanceData, FreelancingEntry, SpendingEntry, Subscription, SpendingCategories } from '../types';
 
 const DEFAULT_FINANCE: FinanceData = {
@@ -165,6 +166,9 @@ function CatBar({ label, value, total, color }: { label: string; value: number; 
 export default function FinanceDashboard() {
   const [rawData, setData, cloudLoaded] = useCloudStorage<FinanceData>('finance', DEFAULT_FINANCE);
   const data: FinanceData = { ...DEFAULT_FINANCE, ...rawData, spendingEntries: rawData.spendingEntries ?? [], subscriptions: rawData.subscriptions ?? [] };
+
+  const [ratesUpdatedAt, setRatesUpdatedAt] = useState<string | null>(null);
+  useExchangeRates(cloudLoaded, setData, setRatesUpdatedAt);
 
   const importRef = useRef<HTMLInputElement>(null);
   const weekSnapDone = useRef(false);
@@ -445,9 +449,15 @@ export default function FinanceDashboard() {
       </div>
 
       {/* Rates */}
-      <div className="flex gap-2 mb-5 flex-wrap">
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
         <RateBadge label="Gold 24K" value={`${fmt(data.goldPricePerGram)} EGP/g`} color="#f59e0b" />
         <RateBadge label="USD → EGP" value={fmt(data.usdToEGP)} color="#22d3ee" />
+        {ratesUpdatedAt && (
+          <span className="text-xs font-mono px-2 py-1 rounded-full"
+            style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: 'rgba(34,197,94,0.7)' }}>
+            ↻ auto {ratesUpdatedAt}
+          </span>
+        )}
       </div>
 
       {/* ── Subscription Reminder Banner ── */}

@@ -5,9 +5,10 @@ export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY as string,
   {
     auth: {
-      // We handle the OAuth code exchange manually so we can catch and show errors
       detectSessionInUrl: false,
-      persistSession: true,
+      // Use sessionStorage so the session ends when the browser tab is closed.
+      // Anyone without the Google account password cannot access the dashboard.
+      storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
     },
   },
 );

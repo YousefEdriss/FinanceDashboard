@@ -167,8 +167,7 @@ export default function FinanceDashboard() {
   const [rawData, setData, cloudLoaded] = useCloudStorage<FinanceData>('finance', DEFAULT_FINANCE);
   const data: FinanceData = { ...DEFAULT_FINANCE, ...rawData, spendingEntries: rawData.spendingEntries ?? [], subscriptions: rawData.subscriptions ?? [] };
 
-  const [ratesUpdatedAt, setRatesUpdatedAt] = useState<string | null>(null);
-  useExchangeRates(cloudLoaded, setData, setRatesUpdatedAt);
+  const { updatedAt: ratesUpdatedAt, refreshing: ratesRefreshing, refreshNow: refreshRates } = useExchangeRates(cloudLoaded, setData);
 
   const importRef = useRef<HTMLInputElement>(null);
   const weekSnapDone = useRef(false);
@@ -452,10 +451,19 @@ export default function FinanceDashboard() {
       <div className="flex items-center gap-2 mb-5 flex-wrap">
         <RateBadge label="Gold 24K" value={`${fmt(data.goldPricePerGram)} EGP/g`} color="#f59e0b" />
         <RateBadge label="USD → EGP" value={fmt(data.usdToEGP)} color="#22d3ee" />
+        <button
+          onClick={refreshRates}
+          disabled={ratesRefreshing}
+          title="Fetch live rates now"
+          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-mono transition-opacity"
+          style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.25)', color: 'rgba(168,85,247,0.8)', opacity: ratesRefreshing ? 0.5 : 1, cursor: ratesRefreshing ? 'wait' : 'pointer' }}>
+          <RefreshCw size={11} className={ratesRefreshing ? 'animate-spin' : ''} />
+          {ratesRefreshing ? 'Fetching…' : 'Refresh'}
+        </button>
         {ratesUpdatedAt && (
           <span className="text-xs font-mono px-2 py-1 rounded-full"
             style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: 'rgba(34,197,94,0.7)' }}>
-            ↻ auto {ratesUpdatedAt}
+            ↻ {ratesUpdatedAt}
           </span>
         )}
       </div>

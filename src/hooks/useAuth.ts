@@ -74,7 +74,11 @@ export function useAuth() {
     setAuthError(null);
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: {
+        redirectTo: window.location.origin,
+        // Always show the Google account picker so the user can switch accounts
+        queryParams: { prompt: 'select_account' },
+      },
     });
   }
 
